@@ -362,7 +362,7 @@ template <class Child, class... Env>
 USTDEX_API constexpr auto when_all_t::_child_completions()
 {
   using _env_t = prop<get_stop_token_t, inplace_stop_token>;
-  USTDEX_LET_COMPLETIONS(auto(_completions) = get_completion_signatures<Child, env<_env_t, FWD_ENV_T<Env>>...>())
+  USTDEX_LET_COMPLETIONS(auto(_completions) = get_completion_signatures<Child, env<_env_t, FWD_ENV_T<Env>...>>())
   {
     if constexpr (_completions.count(set_value) > 1)
     {
