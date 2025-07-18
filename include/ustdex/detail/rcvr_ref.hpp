@@ -25,7 +25,7 @@
 
 namespace ustdex
 {
-template <class _Rcvr, class _Env = env_of_t<_Rcvr>>
+template <class _Rcvr>
 struct _rcvr_ref
 {
   using receiver_concept = receiver_t;
@@ -48,7 +48,7 @@ struct _rcvr_ref
     static_cast<_Rcvr&&>(_rcvr_).set_stopped();
   }
 
-  USTDEX_API auto get_env() const noexcept -> _Env
+  USTDEX_API auto get_env() const noexcept
   {
     return ustdex::get_env(_rcvr_);
   }

@@ -82,7 +82,7 @@ struct _seq
     }
 
     _rcvr_t _rcvr_;
-    connect_result_t<_sndr1_t, _rcvr_ref<_opstate, _env_t>> _opstate1_;
+    connect_result_t<_sndr1_t, _rcvr_ref<_opstate>> _opstate1_;
     connect_result_t<_sndr2_t, _rcvr_ref<_rcvr_t>> _opstate2_;
   };
 

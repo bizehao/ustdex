@@ -167,7 +167,7 @@ private:
     Rcvr _rcvr_;
     Fn _fn_;
     _results<CvSndr, _env_t> _result_;
-    connect_result_t<CvSndr, _rcvr_ref<_opstate_t, _env_t>> _opstate1_;
+    connect_result_t<CvSndr, _rcvr_ref<_opstate_t>> _opstate1_;
     _opstate_variant_t _opstate2_;
   };
 
