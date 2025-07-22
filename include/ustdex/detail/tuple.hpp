@@ -75,20 +75,8 @@ using _apply_result_t = decltype(declval<Tupl>().apply(declval<Fn>(), declval<Tu
 
 namespace detail
 {
-#if USTDEX_MSVC()
-template <class... Ts>
-struct _mk_tuple_
-{
-  using _indices_t = std::make_index_sequence<sizeof...(Ts)>;
-  using type       = _tupl<_indices_t, Ts...>;
-};
-
-template <class... Ts>
-using _tuple = typename _mk_tuple_<Ts...>::type;
-#else
-template <class... Ts>
-using _tuple = _tupl<std::make_index_sequence<sizeof...(Ts)>, Ts...>;
-#endif
+    template <class... Ts>
+    using _tuple = _tupl<std::make_index_sequence<sizeof...(Ts)>, Ts...>;
 } // namespace detail
 
 template <class... Ts>

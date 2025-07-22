@@ -448,16 +448,16 @@ template <template <class...> class Fn, class List, class = void>
 extern _m_undefined<List> _m_apply_q_;
 
 template <template <class...> class Fn, template <class...> class List, class... Ts>
-extern _fn_t<Fn<Ts...>>* _m_apply_q_<Fn, List<Ts...>, _m_void<Fn<Ts...>>>;
+extern _fn_t<_m_always<Fn<Ts...>>>* _m_apply_q_<Fn, List<Ts...>, _m_void<Fn<Ts...>>>;
 
 template <template <class...> class Fn, class Ret, class... As>
-extern _fn_t<Fn<Ret, As...>>* _m_apply_q_<Fn, Ret(As...), _m_void<Fn<Ret, As...>>>;
+extern _fn_t<_m_always<Fn<Ret, As...>>>* _m_apply_q_<Fn, Ret(As...), _m_void<Fn<Ret, As...>>>;
 
 template <template <class...> class Fn, class List>
-using _m_apply_q USTDEX_ATTR_NODEBUG_ALIAS = decltype(_m_apply_q_<Fn, List>());
+using _m_apply_q USTDEX_ATTR_NODEBUG_ALIAS = _m_call<decltype(_m_apply_q_<Fn, List>())>;
 
 template <class Fn, class List>
-using _m_apply USTDEX_ATTR_NODEBUG_ALIAS = decltype(_m_apply_q_<Fn::template call, List>());
+using _m_apply USTDEX_ATTR_NODEBUG_ALIAS = _m_call<decltype(_m_apply_q_<Fn::template call, List>())>;
 
 template <std::size_t Count>
 struct USTDEX_TYPE_VISIBILITY_DEFAULT _m_maybe_concat_fn
@@ -552,7 +552,7 @@ template <class Ret>
 struct _m_quote_function
 {
   template <class... Args>
-  using call USTDEX_ATTR_NODEBUG_ALIAS = Ret(Args...);
+  using call USTDEX_ATTR_NODEBUG_ALIAS = Ret(*)(Args...);
 };
 
 template <class _Set, class... _Ts>

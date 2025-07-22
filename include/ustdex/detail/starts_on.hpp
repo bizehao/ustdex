@@ -72,7 +72,7 @@ private:
       return ustdex::get_env(this->base());
     }
 
-    connect_result_t<schedule_result_t<Sch&>, _rcvr_ref<_opstate_t, _env_t>> _opstate1_;
+    connect_result_t<schedule_result_t<Sch&>, _rcvr_ref<_opstate_t>> _opstate1_;
     connect_result_t<CvSndr, _rcvr_ref<_rcvr_with_sch_t>> _opstate2_;
   };
 

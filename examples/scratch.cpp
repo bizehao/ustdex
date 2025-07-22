@@ -19,29 +19,34 @@
 #include <iostream>
 
 #include "ustdex/ustdex.hpp"
+#include <variant>
+#include <any>
 
 using namespace ustdex;
 
+template<typename... Args>
+void _whatis();
+
 struct sink
 {
-  using receiver_concept = receiver_t;
+	using receiver_concept = receiver_t;
 
-  void set_value() noexcept {}
+	void set_value() noexcept {}
 
-  void set_value(int a) noexcept
-  {
-    std::printf("%d\n", a);
-  }
+	void set_value(int a) noexcept
+	{
+		std::printf("%d\n", a);
+	}
 
-  template <class... As>
-  void set_value(As&&...) noexcept
-  {
-    std::puts("In sink::set_value(auto&&...)");
-  }
+	template <class... As>
+	void set_value(As&&...) noexcept
+	{
+		std::puts("In sink::set_value(auto&&...)");
+	}
 
-  void set_error(std::exception_ptr) noexcept {}
+	void set_error(std::exception_ptr) noexcept {}
 
-  void set_stopped() noexcept {}
+	void set_stopped() noexcept {}
 };
 
 template <class>
@@ -50,56 +55,142 @@ template <class>
 
 static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
+
 int main()
 {
-  thread_context ctx;
-  auto sch  = ctx.get_scheduler();
+	{
+		using CS = completion_signatures<set_value_t(int, double), set_value_t(float, char)>;
+		CS cs{};
+		auto c = cs.select(set_value);
 
-  auto work = just(1, 2, 3) //
-            | then([](int a, int b, int c) {
-                std::printf("%d %d %d\n", a, b, c);
-                return a + b + c;
-              });
-  auto s = starts_on(sch, std::move(work));
-  static_assert(!dependent_sender<decltype(s)>);
-  std::puts("Hello, world!");
-  sync_wait(s);
+		_whatis<decltype(c)>();
+	}
 
-  auto s3 = just(42) | let_value([](int a) {
-              std::puts("here");
-              return just(a + 1);
-            });
-  sync_wait(s3);
+	thread_context ctx;
+	auto sch = ctx.get_scheduler();
 
-  auto [sch2]   = sync_wait(read_env(get_scheduler)).value();
+	auto work = just(1, 2, 3) //
+		| then([](int a, int b, int c)
+			{
+				std::printf("%d %d %d\n", a, b, c);
+				return a + b + c;
+			});
+	auto s = starts_on(sch, std::move(work));
+	static_assert(!dependent_sender<decltype(s)>);
+	std::puts("Hello, world!");
+	sync_wait(s);
 
-  auto [i1, i2] = sync_wait(when_all(just(42), just(43))).value();
-  std::cout << i1 << ' ' << i2 << '\n';
+	auto s3 = just(42) | let_value([](int a)
+		{
+			std::puts("here");
+			return just(a + 1);
+		});
+	sync_wait(s3);
 
-  auto s4        = just(42) | then([](int) {}) | upon_error([](auto) { /*return 42;*/ });
-  auto s5        = when_all(std::move(s4), just(42, 43), just(+"hello"));
-  auto [i, j, k] = sync_wait(std::move(s5)).value();
-  std::cout << i << ' ' << j << ' ' << k << '\n';
+	auto [sch2] = sync_wait(read_env(get_scheduler)).value();
 
-  auto s6 = sequence(just(42) | then([](int) {
-                       std::cout << "sequence sender 1\n";
-                     }),
-                     just(42) | then([](int) {
-                       std::cout << "sequence sender 2\n";
-                     }));
-  sync_wait(std::move(s6));
+	auto [i1, i2] = sync_wait(when_all(just(42), just(43))).value();
+	std::cout << i1 << ' ' << i2 << '\n';
 
-  auto s7 =
-    just(42)
-    | conditional(
-      [](int i) {
-        return i % 2 == 0;
-      },
-      then([](int) {
-        std::cout << "even\n";
-      }),
-      then([](int) {
-        std::cout << "odd\n";
-      }));
-  sync_wait(std::move(s7));
+	auto s4 = just(42) | then([](int) {}) | upon_error([](auto) { /*return 42;*/ });
+	auto s5 = when_all(std::move(s4), just(42, 43), just(+"hello"));
+	auto [i, j, k] = sync_wait(std::move(s5)).value();
+	std::cout << i << ' ' << j << ' ' << k << '\n';
+
+	auto s6 = sequence(just(42) | then([](int)
+		{
+			std::cout << "sequence sender 1\n";
+		}),
+		just(42) | then([](int)
+			{
+				std::cout << "sequence sender 2\n";
+			}));
+	sync_wait(std::move(s6));
+
+	auto s7 =
+		just(42)
+		| conditional(
+			[](int i)
+			{
+				return i % 2 == 0;
+			},
+			then([](int)
+				{
+					std::cout << "even\n";
+				}),
+			then([](int)
+				{
+					std::cout << "odd\n";
+				}));
+	sync_wait(std::move(s7));
+
+
+	{
+		inplace_stop_source stop_source;
+
+		auto task = just(100)
+			| then([&stop_source](int i)
+				{
+					stop_source.request_stop();
+					std::cout << "111_Value: " << i << '\n';
+					return i;
+				})
+			//| stop_when(stop_source.get_token())
+			| stop_with([](const int& i)
+				{
+					if (i == 100)
+					{
+						return false;
+					}
+					else
+					{
+						return false;
+					}
+				})
+			| then([](int i)
+				{
+					std::cout << "222_Value: " << i << '\n';
+					return i;
+				})
+			| upon_stopped([]()
+				{
+					std::cout << "Stopped!\n";
+				})
+			| upon_error([](std::exception_ptr e)
+				{
+					try
+					{
+						std::rethrow_exception(e);
+					}
+					catch (const std::exception& ex)
+					{
+						std::cout << "Error: " << ex.what() << '\n';
+					}
+				});
+		
+		auto op = connect(std::move(task), sink{});
+		start(op);
+		//sync_wait(std::move(task));
+
+	}
+
+	{
+		/*auto task = when_any(just(5), just('a'), just(3.14)) | 
+			then([](std::any v)
+				{
+					int aa = 0;
+				});
+
+		auto op = connect(std::move(task), sink{});
+		start(op);*/
+
+		//using TA = completion_signatures_of_t<decltype(task)>;
+		//_m_self_or<_nil>::call
+		//using TB = _value_types<TA, _tupl, _variant>;
+
+		//_whatis<TB>();
+	}
+
+
+
 }
