@@ -14,7 +14,7 @@ namespace ustdex
 	{
 		_tuple<Args...> _args_;
 
-		binder_closure(Args... args) noexcept :_args_({ static_cast<Args&&>(args)... })
+		binder_closure(Args... args) noexcept : _args_({ static_cast<Args&&>(args)... })
 		{}
 
 		template<class Sndr, std::size_t... I>
@@ -30,7 +30,7 @@ namespace ustdex
 		}
 
 		template <class Sndr>
-		USTDEX_TRIVIAL_API friend auto operator|(Sndr sndr, binder_closure&& self) noexcept ->_call_result_t<bind_t, Sndr, Args...>
+		USTDEX_TRIVIAL_API friend auto operator|(Sndr sndr, binder_closure self) noexcept ->_call_result_t<bind_t, Sndr, Args...>
 		{
 			return self.make(static_cast<Sndr&&>(sndr), static_cast<_tuple<Args...>&&>(self._args_), std::make_index_sequence<sizeof...(Args)>());
 		}

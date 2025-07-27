@@ -46,7 +46,7 @@ namespace ustdex
 		template <class Rcvr>
 		struct visitor_fn
 		{
-			Rcvr& _rcvr;
+			Rcvr _rcvr;
 
 			template <std::size_t... I, class Tag, class... As>
 			void operator()(_tupl<std::index_sequence<I...>, Tag, As...> result) noexcept
@@ -60,11 +60,6 @@ namespace ustdex
 			}
 		};
 
-		template <class Rcvr>
-		auto _make_visitor_fn(Rcvr& _rcvr) noexcept
-		{
-			return visitor_fn<Rcvr>{_rcvr};
-		}
 	}
 
 	struct USTDEX_TYPE_VISIBILITY_DEFAULT when_any_t
@@ -80,13 +75,8 @@ namespace ustdex
 
 		// Returns the completion signatures of a child sender. Throws an exception if
 		// the child sender has more than one set_value completion signature.
-		template <class Child, class... Env>
+		template <class Parent, class Child, class... Env>
 		USTDEX_API static constexpr auto _child_completions();
-
-		// Merges the completion signatures of the child senders into a single set of
-		// completion signatures for the when_all sender.
-		template <class... Completions>
-		USTDEX_API static constexpr auto _merge_completions(Completions...);
 
 		/// The receivers connected to the when_all's sub-operations expose this as
 		/// their environment. Its `get_stop_token` query returns the token from
@@ -152,17 +142,6 @@ namespace ustdex
 		template <class Rcvr, class CvFn, class Sndrs>
 		struct _state_t;
 
-		template<typename Tag>
-		struct transform_impl
-		{
-			template <class... Ts>
-			auto operator ()() const
-			{
-				return _tuple<Tag, Ts...>{};
-			}
-		};
-
-
 		template <class Rcvr, class CvFn, class Idx, class... Sndrs>
 		struct _state_t<Rcvr, CvFn, _tupl<Idx, Sndrs...>>
 		{
@@ -223,7 +202,7 @@ namespace ustdex
 						ustdex::set_stopped(static_cast<Rcvr&&>(_rcvr_));
 						return;
 					}
-					_result_._visit(_when_any::_make_visitor_fn(_rcvr_), static_cast<_result_t&&>(_result_));
+					_result_._visit(_when_any::visitor_fn<Rcvr>{static_cast<Rcvr&&>(_rcvr_)}, static_cast<_result_t&&>(_result_));
 				}
 			}
 
@@ -316,11 +295,11 @@ namespace ustdex
 		USTDEX_API auto operator()(Sndrs... _sndrs) const->_sndr_t<Sndrs...>;
 	};
 
-	template <class Child, class... Env>
+	template <class Parent, class Child, class... Env>
 	USTDEX_API constexpr auto when_any_t::_child_completions()
 	{
 		using _env_t = prop<get_stop_token_t, inplace_stop_token>;
-		USTDEX_LET_COMPLETIONS(auto(_completions) = get_completion_signatures<Child, env<_env_t, FWD_ENV_T<Env>...>>())
+		USTDEX_LET_COMPLETIONS(auto(_completions) = ustdex::get_child_completion_signatures<Parent, Child, env<_env_t, FWD_ENV_T<Env>...>>())
 		{
 			if constexpr (_completions.count(set_value) > 1)
 			{
@@ -338,41 +317,6 @@ namespace ustdex
 	USTDEX_PRAGMA_PUSH()
 		USTDEX_PRAGMA_IGNORE_GNU("-Wunused-value")
 
-		template <class... Completions>
-	USTDEX_API constexpr auto when_any_t::_merge_completions(Completions... _cs)
-	{
-		// Use USTDEX_LET_COMPLETIONS to ensure all completions are valid:
-		USTDEX_LET_COMPLETIONS(auto(_tmp) = (completion_signatures{}, ..., _cs)) // NB: uses overloaded comma operator
-		{
-			std::ignore = _tmp;                                    // silence unused variable warning
-			auto _non_value_completions = concat_completion_signatures(
-				completion_signatures<set_stopped_t()>(),
-				transform_completion_signatures(_cs, _swallow_transform(), _decay_transform<set_error_t>())...);
-
-			if constexpr (((0 == _cs.count(set_value)) || ...))
-			{
-				// at least one child sender has no value completions at all, so the
-				// when_all will never complete with set_value. return just the error and
-				// stopped completions.
-				return _non_value_completions;
-			}
-			else
-			{
-				// All child senders have exactly one value completion signature, each of
-				// which may have multiple arguments. Concatenate all the arguments into a
-				// single set_value_t completion signature.
-				auto _values = concat_completion_signatures(_cs.select(ustdex::set_value)...);
-				//auto mm = std::make_tuple(_cs.select<set_value_t>(ustdex::set_value)...);
-				// Add the value completion to the error and stopped completions.
-				auto _local = _non_value_completions + _values;
-				// Check if any of the values or errors are not nothrow decay-copyable.
-				constexpr bool _all_nothrow_decay_copyable =
-					(_value_types<Completions, _nothrow_decay_copyable_t, _identity_t>::value && ...);
-				return _local + _eptr_completion_if<!_all_nothrow_decay_copyable>();
-			}
-		}
-	}
-
 	USTDEX_PRAGMA_POP()
 
 		// The sender for when_all
@@ -389,7 +333,14 @@ namespace ustdex
 		template <class Self, class... Env>
 		USTDEX_API static constexpr auto get_completion_signatures()
 		{
-			return _merge_completions(_child_completions<_copy_cvref_t<Self, Sndrs>, Env...>()...);
+
+			auto cs = concat_completion_signatures(
+				_child_completions<Self, Sndrs, Env...>()..., completion_signatures<set_stopped_t()>{});
+
+			using Completions = decltype(cs);
+
+			constexpr bool _all_nothrow_decay_copyable = _value_types<Completions, _nothrow_decay_copyable_t, std::conjunction>::value;
+			return cs + _eptr_completion_if<!_all_nothrow_decay_copyable>();
 		}
 
 		template <class Rcvr>

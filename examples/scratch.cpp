@@ -58,13 +58,13 @@ static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
 int main()
 {
-	{
+	/*{
 		using CS = completion_signatures<set_value_t(int, double), set_value_t(float, char)>;
 		CS cs{};
 		auto c = cs.select(set_value);
 
 		_whatis<decltype(c)>();
-	}
+	}*/
 
 	thread_context ctx;
 	auto sch = ctx.get_scheduler();
@@ -175,14 +175,14 @@ int main()
 	}
 
 	{
-		/*auto task = when_any(just(5), just('a'), just(3.14)) | 
+		auto task = when_any(just(5), just('a'), just(3.14)) | 
 			then([](std::any v)
 				{
 					int aa = 0;
 				});
 
 		auto op = connect(std::move(task), sink{});
-		start(op);*/
+		start(op);
 
 		//using TA = completion_signatures_of_t<decltype(task)>;
 		//_m_self_or<_nil>::call
