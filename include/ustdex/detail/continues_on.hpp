@@ -155,7 +155,7 @@ private:
     }
 
     _rcvr_t<Rcvr, _result_t> _rcvr_;
-    connect_result_t<CvSndr, _rcvr_ref<_opstate_t>> _opstate1_;
+    connect_result_t<CvSndr, _rcvr_ref<_opstate_t, _env_t>> _opstate1_;
     connect_result_t<schedule_result_t<Sch>, _rcvr_ref<_rcvr_t<Rcvr, _result_t>>> _opstate2_;
   };
 

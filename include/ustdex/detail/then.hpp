@@ -176,7 +176,7 @@ private:
 
     Rcvr _rcvr_;
     Fn _fn_;
-    connect_result_t<CvSndr, _rcvr_ref<_opstate_t>> _opstate_;
+    connect_result_t<CvSndr, _rcvr_ref<_opstate_t, _env_t>> _opstate_;
   };
 
   template <class Fn>

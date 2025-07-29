@@ -45,6 +45,8 @@ namespace ustdex
         {
             using operation_state_concept = operation_state_t;
 
+			using _env_t = env_of_t<Rcvr>;
+
             USTDEX_API _opstate_t(CvSndr&& _sndr, Rcvr _rcvr, Fn _fn)
                 : _rcvr_{ static_cast<Rcvr&&>(_rcvr) }
                 , _fn_{ static_cast<Fn&&>(_fn) }
@@ -97,14 +99,14 @@ namespace ustdex
                 ustdex::set_stopped(static_cast<Rcvr&&>(_rcvr_));
             }
 
-            USTDEX_API auto get_env() const noexcept -> env_of_t<Rcvr>
+            USTDEX_API auto get_env() const noexcept -> _env_t
             {
                 return  ustdex::get_env(_rcvr_);
             }
 
             Rcvr _rcvr_;
             Fn _fn_;
-            connect_result_t<CvSndr, _rcvr_ref<_opstate_t>> _opstate_;
+            connect_result_t<CvSndr, _rcvr_ref<_opstate_t, _env_t>> _opstate_;
         };
 
         template <class Fn>

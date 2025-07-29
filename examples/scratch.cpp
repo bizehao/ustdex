@@ -47,25 +47,51 @@ struct sink
 	void set_error(std::exception_ptr) noexcept {}
 
 	void set_stopped() noexcept {}
+
+	[[nodiscard]]
+	prop<get_stop_token_t, inplace_stop_token> get_env() const noexcept
+	{
+		static inplace_stop_source _stop_source_;
+		return prop{ get_stop_token, _stop_source_.get_token() };
+	}
 };
 
 template <class>
 [[deprecated]] void print()
 {}
 
-static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
+static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
 int main()
 {
-	/*{
-		using CS = completion_signatures<set_value_t(int, double), set_value_t(float, char)>;
-		CS cs{};
-		auto c = cs.select(set_value);
+#if 0
+	auto task = read_env(get_stop_token)
+		| then([](auto stop_token)
+			{
+				std::cout << "Stop token: " << stop_token.stop_requested() << '\n';
+				return 42;
+			})
+		| then([](int i)
+			{
+				std::cout << "Value: " << i << '\n';
+				return i + 1;
+			});
 
-		_whatis<decltype(c)>();
-	}*/
+	auto task2 = when_all(task);
 
+	//using TT = completion_signatures_of_t<decltype(task)>;
+
+	//_whatis<TT>();
+
+	auto op = connect(task2, sink{});
+
+	start(op);
+
+	//auto [sch2] = sync_wait(read_env(get_scheduler)).value();
+#endif
+
+#if 1
 	thread_context ctx;
 	auto sch = ctx.get_scheduler();
 
@@ -167,7 +193,7 @@ int main()
 						std::cout << "Error: " << ex.what() << '\n';
 					}
 				});
-		
+
 		auto op = connect(std::move(task), sink{});
 		start(op);
 		//sync_wait(std::move(task));
@@ -175,7 +201,7 @@ int main()
 	}
 
 	{
-		auto task = when_any(just(5), just('a'), just(3.14)) | 
+		auto task = when_any(just(5), just('a'), just(3.14)) |
 			then([](std::any v)
 				{
 					int aa = 0;
@@ -192,5 +218,5 @@ int main()
 	}
 
 
-
+#endif
 }

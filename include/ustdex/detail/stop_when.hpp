@@ -81,7 +81,7 @@ namespace ustdex
 			inplace_stop_source _stop_source_;
             _lazy<_stop_callback_t1> _on_stop1_;
             _lazy<_stop_callback_t2> _on_stop2_;
-            connect_result_t<CvSndr, _rcvr_ref<_opstate_t>> _opstate_;
+            connect_result_t<CvSndr, _rcvr_ref<_opstate_t, _env_t>> _opstate_;
         };
 
         template <class Sndr, class Token>
