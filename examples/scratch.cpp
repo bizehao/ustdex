@@ -21,6 +21,7 @@
 #include "ustdex/ustdex.hpp"
 #include <variant>
 #include <any>
+#include <random>
 
 using namespace ustdex;
 
@@ -63,8 +64,107 @@ template <class>
 
 static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
+struct parallel_sort_t
+{
+private:
+
+	template<class Rcvr, class Sch, class RandomAccessIterator, typename SortFun>
+	struct _opstate_t
+	{
+		using operation_state_concept = operation_state_t;
+		using _env_t = env_of_t<Rcvr>;
+
+		USTDEX_API _opstate_t(Rcvr&& rcvr, Sch sch, RandomAccessIterator begin, RandomAccessIterator end, SortFun sort_fun)
+			: _rcvr_{ std::move(rcvr) }, _sch_{ sch }, _begin_{ begin }, _end_{ end }, _sort_fun_{ sort_fun }
+			, _opstate_(ustdex::connect(ustdex::schedule(_sch_), ustdex::_rcvr_ref{ *this }))
+		{}
+		USTDEX_API void start() noexcept
+		{
+			ustdex::start(_opstate_);
+		}
+		USTDEX_API void set_value() noexcept;
+
+		USTDEX_API void set_error(std::exception_ptr) noexcept
+		{
+			ustdex::set_error(std::move(_rcvr_), std::current_exception());
+		}
+		USTDEX_API void set_stopped() noexcept
+		{
+			ustdex::set_stopped(std::move(_rcvr_));
+		}
+		USTDEX_API auto get_env() const noexcept -> _env_t
+		{
+			return ustdex::get_env(_rcvr_);
+		}
+
+		Rcvr _rcvr_;
+		Sch _sch_;
+		RandomAccessIterator _begin_;
+		RandomAccessIterator _end_;
+		SortFun _sort_fun_;
+		ustdex::connect_result_t<ustdex::schedule_result_t<Sch>, ustdex::_rcvr_ref<_opstate_t, _env_t>> _opstate_;
+	};
+
+	template <class Sch, class RandomAccessIterator, typename SortFun>
+	struct _sndr_t
+	{
+		using sender_concept = sender_t;
+
+		template <class Self, class... Env>
+		static constexpr auto get_completion_signatures() noexcept
+		{
+			return completion_signatures<set_value_t(RandomAccessIterator, RandomAccessIterator), set_error_t(::std::exception_ptr)>();
+		}
+		template <class Rcvr>
+		auto connect(Rcvr&& rcvr) && noexcept(ustdex::_nothrow_decay_copyable<Sch, RandomAccessIterator, SortFun>)
+			-> _opstate_t<Rcvr, Sch, RandomAccessIterator, SortFun>
+		{
+			return _opstate_t<Rcvr, Sch, RandomAccessIterator, SortFun>(
+				std::move(rcvr), std::move(_sch_), _begin_, _end_, std::move(_sort_fun_));
+		}
+
+		template <class Rcvr>
+		auto connect(Rcvr&& rcvr) const& noexcept(ustdex::_nothrow_decay_copyable<Sch, RandomAccessIterator, SortFun>)
+			-> _opstate_t<Rcvr, Sch, RandomAccessIterator, SortFun>
+		{
+			return _opstate_t<Rcvr, Sch, RandomAccessIterator, SortFun>(
+				std::move(rcvr), _sch_, _begin_, _end_, _sort_fun_);
+		}
+
+		Sch _sch_;
+		RandomAccessIterator _begin_;
+		RandomAccessIterator _end_;
+		SortFun _sort_fun_;
+	};
+
+	template <class Sch, class RandomAccessIterator, typename SortFun>
+	auto operator()(Sch sch, RandomAccessIterator begin, RandomAccessIterator end, SortFun sort_fun) const noexcept -> _sndr_t<Sch, RandomAccessIterator, SortFun>
+	{
+		return _sndr_t<Sch, RandomAccessIterator, SortFun>{std::move(sch), begin, end, std::move(sort_fun)};
+	}
+};
+
+inline constexpr parallel_sort_t parallel_sort{};
+
 int main()
 {
+	ustdex::static_thread_pool thread_pool{};
+	std::vector<int> vec;
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<int> dis(1, 300);
+	std::generate(vec.begin(), vec.end(), [&]()
+		{
+			return dis(gen);
+		});
+
+	auto ps = parallel_sort(thread_pool.get_scheduler(), vec.begin(), vec.end(), [](const int& a, const int& b)
+		{
+			return a < b;
+		});
+	ustdex::sync_wait(std::move(ps));
+	thread_pool.join();
+
 #if 0
 	auto task = read_env(get_stop_token)
 		| then([](auto stop_token)
@@ -91,7 +191,7 @@ int main()
 	//auto [sch2] = sync_wait(read_env(get_scheduler)).value();
 #endif
 
-#if 1
+#if 0
 	thread_context ctx;
 	auto sch = ctx.get_scheduler();
 

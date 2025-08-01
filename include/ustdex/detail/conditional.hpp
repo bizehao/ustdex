@@ -236,7 +236,7 @@ struct USTDEX_TYPE_VISIBILITY_DEFAULT _cond_t::_sndr_t
   template <class Rcvr>
   USTDEX_API auto connect(Rcvr _rcvr) const& -> _opstate<Sndr const&, Rcvr, Pred, Then, Else>
   {
-    return {_sndr_, static_cast<Rcvr&&>(_rcvr), static_cast<_data_t&&>(_data_)};
+    return {_sndr_, static_cast<Rcvr&&>(_rcvr), _data_};
   }
 
   USTDEX_API env_of_t<Sndr> get_env() const noexcept
