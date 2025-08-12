@@ -70,7 +70,11 @@ static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
 int main()
 {
-	ustdex::_make_sexpr<int>(3, 4, 5);
+	auto pp1 = ustdex::_make_sexpr<int>(3, 4, 5);
+
+	_whatis<decltype(pp1)::__captures_t>();
+
+	int a = 0;
 
 #if 0
 	asio::static_thread_pool thread_pool_a{};

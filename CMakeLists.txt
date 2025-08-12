@@ -66,7 +66,7 @@ target_include_directories(ustdex INTERFACE
 
 target_link_libraries(ustdex INTERFACE Threads::Threads)
 
-target_compile_features(ustdex INTERFACE cxx_std_20)
+target_compile_features(ustdex INTERFACE cxx_std_17)
 target_include_directories(ustdex INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_compile_options(ustdex INTERFACE

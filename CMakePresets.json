@@ -12,7 +12,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_STANDARD": "17",
-        "CMAKE_TOOLCHAIN_FILE": "C:/Users/BiZeHao/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG}/scripts/buildsystems/vcpkg.cmake"
       }
     },
     {

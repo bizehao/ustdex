@@ -12,6 +12,7 @@ namespace ustdex
 {
     namespace detail
     {
+        struct __ {};
         // A type that describes a sender's metadata
         template <class _Tag, class _Data, class... _Child>
         struct __desc
@@ -23,23 +24,42 @@ namespace ustdex
             template <class _Fn>
             using call = _m_call<_Fn, _Tag, _Data, _Child...>;
         };
-    }
 
-    template <
-        class _Descriptor,
-        auto _DescriptorFn =
-        []
+        template <class _Tag, class... _Captures>
+        struct __captures_impl
         {
-            return _Descriptor();
+            template<class _Cvref, class _Fun>
+            auto operator()(_Cvref, _Fun&& __fun) noexcept(_nothrow_callable<_Fun, _Tag, _m_call<_Cvref, _Captures>...>)
+                -> _call_result_t<_Fun, _Tag, _m_call<_Cvref, _Captures>...>
+            {
+
+                return __captures3_tup.apply([](_Captures&&... __captures3)
+                    {
+                        static_cast<_Fun&&>(__fun)(_Tag(), const_cast<_m_call<_Cvref, _Captures>&&>(__captures3)...);
+                    }, __captures3_tup);
+            }
+
+            _tuple<_Captures...> __captures3_tup;
+        };
+
+        template <class _Tag, class... _Captures>
+        constexpr auto __captures(_Tag, _Captures&&... __captures2)
+        {
+            return __captures_impl<_Tag, _Captures...>{_tuple<_Captures...>{std::move(__captures2)...}};
         }
-    >
-    inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+
+        /*struct __captures_t
+        {
+            template <class _Tag, class _Data, class... _Child>
+            using call = decltype(__captures(_Tag(), std::declval<_Data>(), std::declval<_Child>()...));
+        };*/
+
+        template <class _Tag, class _Data, class... _Child>
+        using __captures_t = decltype(__captures(_Tag(), std::declval<_Data>(), std::declval<_Child>()...));
+    }
 
     template <class _Tag, class _Data, class... _Child>
-    inline constexpr auto __descriptor_fn()
-    {
-        return __descriptor_fn_v<detail::__desc<_Tag, _Data, _Child...>>;
-    }
+    using __descriptor_fn_t = _fn_t<detail::__desc<_Tag, _Data, _Child...>>*;
 
     namespace
     {
@@ -47,19 +67,16 @@ namespace ustdex
         //! This struct closely resembles P2300's [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24),
         //! but is not an exact implementation.
         //! Note: The struct named `__basic_sender` is just a dummy type and is also not _`basic-sender`_.
-        template <auto _DescriptorFn>
+        template <typename _DescriptorFn>
         struct __sexpr
         {
             using sender_concept = sender_t;
 
-            // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
-            /*using __id = __sexpr;
-            using __t = __sexpr;
-            using __desc_t = decltype(_DescriptorFn());
-            using __tag_t = typename __desc_t::__tag;
-            using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
+            using __desc_t = decltype(std::declval<_DescriptorFn>()());
+            //using __tag_t = typename __desc_t::__tag;
+            using __captures_t = _m_call<__desc_t, _m_indirect_q<detail::__captures_t>>;
 
-            mutable __captures_t __impl_;*/
+            //mutable __captures_t __impl_;
 
             template <class _Tag, class _Data, class... _Child>
             explicit __sexpr(_Tag, _Data&& __data, _Child&&... __child)
@@ -143,11 +160,11 @@ namespace ustdex
         };
 
         template <class _Tag, class _Data, class... _Child>
-        __sexpr(_Tag, _Data, _Child...)->__sexpr<__descriptor_fn<_Tag, _Data, _Child...>()>;
+        __sexpr(_Tag, _Data, _Child...)->__sexpr<__descriptor_fn_t<_Tag, _Data, _Child...>>;
     } // namespace
 
 	template <class _Tag, class _Data, class... _Child>
-	using _sexpr_t = __sexpr<__descriptor_fn<_Tag, _Data, _Child...>()>;
+	using _sexpr_t = __sexpr<__descriptor_fn_t<_Tag, _Data, _Child...>>;
 
 	namespace detail
 	{
