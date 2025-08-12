@@ -25,6 +25,7 @@
 #include <chrono>
 #include "parallel_sort.hpp"
 #include "asio_thread_pool.hpp"
+#include "ustdex/detail/basic_sender.hpp"
 
 using namespace ustdex;
 
@@ -69,6 +70,9 @@ static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
 int main()
 {
+	ustdex::_make_sexpr<int>(3, 4, 5);
+
+#if 0
 	asio::static_thread_pool thread_pool_a{};
 	ustdex::static_thread_pool thread_pool_b{};
 	std::vector<int> values(100'000'000);
@@ -95,6 +99,8 @@ int main()
 		<< " microseconds\n";
 
 	return 0;
+
+#endif
 
 #if 0
 	auto task = read_env(get_stop_token)
