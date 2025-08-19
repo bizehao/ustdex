@@ -23,8 +23,8 @@
 #include <any>
 #include <random>
 #include <chrono>
-#include "parallel_sort.hpp"
-#include "asio_thread_pool.hpp"
+//#include "parallel_sort.hpp"
+//#include "asio_thread_pool.hpp"
 #include "ustdex/detail/basic_sender.hpp"
 
 using namespace ustdex;
@@ -68,11 +68,82 @@ template <class>
 
 static_assert(dependent_sender<decltype(read_env(_empty()))>);
 
+namespace __test_sender
+{
+	struct test_sender_t
+	{
+		template <typename... _Ts>
+		auto operator()(_Ts&&... __ts) const noexcept((ustdex::_nothrow_decay_copyable<_Ts> && ...))
+		{
+			return ustdex::_make_sexpr<test_sender_t>(_tuple<_Ts...>{ static_cast<_Ts&&>(__ts)... });
+		}
+	};
+
+	struct __impl : __sexpr_defaults
+	{
+		static constexpr struct
+		{
+			template<typename _Sender, typename... Env>
+			auto operator()(_Sender&&, Env&&...) const noexcept
+			{
+				return completion_signatures<set_value_t()>{};
+			};
+		} get_completion_signatures;
+
+
+		static constexpr struct
+		{
+			template<class _State, class _Receiver>
+			void operator()(_State& __state, _Receiver& __rcvr) const noexcept
+			{
+				__state.apply([&__rcvr](auto&... ts)
+					{
+						ustdex::set_value(__rcvr, std::move(ts)...);
+					}, __state);
+			};
+		} start;
+	};
+}
+
+template <>
+struct __sexpr_impl<__test_sender::test_sender_t> : __test_sender::__impl {};
+
+template<typename T>
+auto test_aa(T t)
+{
+	return t;
+}
+
+template <class _Tag>
+using AA_get_attrs_fn = decltype(test_aa(_Tag {}));
+
 int main()
 {
-	auto pp1 = ustdex::_make_sexpr<int>(3, 4, 5);
+	AA_get_attrs_fn<int> vv;
 
-	_whatis<decltype(pp1)::__captures_t>();
+	__test_sender::test_sender_t test_sender;
+
+	//auto ts11 = test_sender(1, 2, 3);
+
+	//ts11.get_completion_signatures<int>();
+
+	//using T1 = ustdex::completion_signatures_of_t<decltype(ts11)>;
+
+	//_whatis<T1>();
+
+	auto v1 = test_sender(1, 2, 3);
+
+	/*using T_v1 = tag_of_t<decltype(v1)>;
+
+	_whatis<T_v1>();*/
+
+	auto op = ustdex::connect(v1, sink{});
+
+	ustdex::start(op);
+
+
+	/*auto pp1 = ustdex::_make_sexpr<int>(3, 4, 5);
+	_whatis<decltype(pp1)::__captures_t>();*/
 
 	int a = 0;
 
