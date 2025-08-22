@@ -84,7 +84,7 @@ template <class From, class To>
 using _copy_cvref_t = typename _copy_cvref_fn<From>::template call<To>;
 
 template <class Fn, class... As>
-using _call_result_t = decltype(declval<Fn>()(declval<As>()...));
+using _call_result_t = decltype(std::declval<Fn>()(std::declval<As>()...));
 
 template <const auto& _Fun, class... _As>
 using __result_of = _call_result_t<decltype(_Fun), _As...>;

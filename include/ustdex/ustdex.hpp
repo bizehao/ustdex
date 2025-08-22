@@ -39,3 +39,4 @@
 #include "detail/stop_when.hpp"      // IWYU pragma: export
 #include "detail/stop_with.hpp"      // IWYU pragma: export
 #include "detail/static_thread_pool.hpp"
+#include "detail/basic_sender.hpp"

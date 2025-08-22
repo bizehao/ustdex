@@ -56,7 +56,7 @@ namespace ustdex
 		struct __get_data
 		{
 			template <class _Data, typename... _Child>
-			USTDEX_ATTR_ALWAYS_INLINE
+			//USTDEX_ATTR_ALWAYS_INLINE
 				auto operator()(_ignore, _Data&& __data, _Child&&...) const noexcept -> _Data&&
 			{
 				return static_cast<_Data&&>(__data);
@@ -107,9 +107,9 @@ namespace ustdex
 				template <std::size_t... _Is, class... _Child>
 				auto operator()(std::index_sequence<_Is...>, _Child&&... __child) const
 					noexcept((_nothrow_callable<connect_t, _Child, __receiver_t<_Is>> && ...))
-					-> _tuple<connect_result_t<_Child, __receiver_t<_Is>>...>
+					-> _tupl_for<connect_result_t<_Child, __receiver_t<_Is>>...>
 				{
-					return _tuple{ ustdex::connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})... };
+					return _tupl{ ustdex::connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})... };
 				}
 			};
 
@@ -159,10 +159,11 @@ namespace ustdex
 		struct __captures_impl
 		{
 			template<class _Cvref, class _Fun>
-			auto operator()(_Cvref, _Fun&& __fun) noexcept(_nothrow_callable<_Fun, _Tag, _m_call<_Cvref, _Captures>...>)
+			auto operator()(_Cvref a, _Fun&& __fun) noexcept(_nothrow_callable<_Fun, _Tag, _m_call<_Cvref, _Captures>...>)
 				-> _call_result_t<_Fun, _Tag, _m_call<_Cvref, _Captures>...>
 			{
 				return __captures3_tup.apply([__fun = std::move(__fun)](_Captures&... __captures3) mutable
+					-> _call_result_t<_Fun, _Tag, _m_call<_Cvref, _Captures>...>
 					{
 						return static_cast<_Fun&&>(__fun)(_Tag(), const_cast<_m_call<_Cvref, _Captures>&&>(__captures3)...);
 					}, __captures3_tup);
@@ -195,7 +196,8 @@ namespace ustdex
 				&& _nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver&>)
 				: __rcvr_(static_cast<_Receiver&&>(__rcvr))
 				, __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_))
-			{}
+			{
+			}
 
 			USTDEX_ATTR_ALWAYS_INLINE auto __state() & noexcept -> __state_t&
 			{
@@ -313,6 +315,20 @@ namespace ustdex
 	using detail::__sexpr_apply_t;
 	inline constexpr __sexpr_apply_t __sexpr_apply{};
 
+	template <class _Sender>
+	using tag_of_t = typename detail::__desc_of<_Sender>::__tag;
+
+	template <class _Sender>
+	using data_of = typename detail::__desc_of<_Sender>::__data;
+
+	template <class _Sender, class _Continuation = _m_quote<_m_list>>
+	using children_of = _m_apply<_Continuation, typename detail::__desc_of<_Sender>::__children>;
+
+	template <class _Tag, class _Data, class... _Child>
+	using __descriptor_fn_t = _fn_t<detail::__desc<_Tag, _Data, _Child...>>*;
+
+	using __sexpr_defaults = detail::__defaults;
+
 	template <class _Sexpr, class _Receiver>
 	struct __op_state : detail::__op_base<_Sexpr, _Receiver>
 	{
@@ -336,7 +352,6 @@ namespace ustdex
 
 		USTDEX_ATTR_ALWAYS_INLINE void start() & noexcept
 		{
-			using __tag_t = typename __op_state::__tag_t;
 			auto&& __rcvr = this->__rcvr();
 			__inner_ops_.apply(
 				[&](auto&... __ops) noexcept
@@ -352,16 +367,8 @@ namespace ustdex
 		{
 			using __tag_t = typename __op_state::__tag_t;
 			auto&& __rcvr = this->__rcvr();
-			using _CompleteFn = __mtypeof<__sexpr_impl<__tag_t>::complete>;
-			if constexpr (__callable<_CompleteFn, _Index, __op_state&, _Tag2, _Args...>)
-			{
-				__sexpr_impl<__tag_t>::complete(_Index(), *this, _Tag2(), static_cast<_Args&&>(__args)...);
-			}
-			else
-			{
-				__sexpr_impl<__tag_t>::complete(
-					_Index(), this->__state(), __rcvr, _Tag2(), static_cast<_Args&&>(__args)...);
-			}
+			__sexpr_impl<__tag_t>::complete(
+				_Index(), this->__state(), __rcvr, _Tag2(), static_cast<_Args&&>(__args)...);
 		}
 
 		template <class _Index>
@@ -373,14 +380,6 @@ namespace ustdex
 			return __sexpr_impl<__tag_t>::get_env(_Index(), this->__state(), __rcvr);
 		}
 	};
-
-	template <class _Sender>
-	using tag_of_t = typename detail::__desc_of<_Sender>::__tag;
-
-	template <class _Tag, class _Data, class... _Child>
-	using __descriptor_fn_t = _fn_t<detail::__desc<_Tag, _Data, _Child...>>*;
-
-	using __sexpr_defaults = detail::__defaults;
 
 	template <class _Receiver, class _Sexpr, std::size_t _Idx>
 	struct __rcvr
@@ -476,7 +475,7 @@ namespace ustdex
 
 			template <class _Self, class... _Env>
 			USTDEX_ATTR_ALWAYS_INLINE
-				static auto get_completion_signatures() noexcept ->
+				static constexpr auto get_completion_signatures() noexcept ->
 				__result_of<__impl::get_completion_signatures, _Self, _Env...>
 			{
 				return {};

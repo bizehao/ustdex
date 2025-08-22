@@ -23,18 +23,16 @@
 #include <any>
 #include <random>
 #include <chrono>
-//#include "parallel_sort.hpp"
-//#include "asio_thread_pool.hpp"
+ #include "parallel_sort.hpp"
+ //#include "asio_thread_pool.hpp"
 #include "ustdex/detail/basic_sender.hpp"
-
-using namespace ustdex;
 
 template<typename... Args>
 void _whatis();
 
 struct sink
 {
-	using receiver_concept = receiver_t;
+	using receiver_concept = ustdex::receiver_t;
 
 	void set_value() noexcept {}
 
@@ -54,10 +52,10 @@ struct sink
 	void set_stopped() noexcept {}
 
 	[[nodiscard]]
-	prop<get_stop_token_t, inplace_stop_token> get_env() const noexcept
+	ustdex::prop<ustdex::get_stop_token_t, ustdex::inplace_stop_token> get_env() const noexcept
 	{
-		static inplace_stop_source _stop_source_;
-		return prop{ get_stop_token, _stop_source_.get_token() };
+		static ustdex::inplace_stop_source _stop_source_;
+		return ustdex::prop{ ustdex::get_stop_token, _stop_source_.get_token() };
 	}
 };
 
@@ -65,92 +63,31 @@ template <class>
 [[deprecated]] void print()
 {}
 
-
-static_assert(dependent_sender<decltype(read_env(_empty()))>);
-
-namespace __test_sender
-{
-	struct test_sender_t
-	{
-		template <typename... _Ts>
-		auto operator()(_Ts&&... __ts) const noexcept((ustdex::_nothrow_decay_copyable<_Ts> && ...))
-		{
-			return ustdex::_make_sexpr<test_sender_t>(_tuple<_Ts...>{ static_cast<_Ts&&>(__ts)... });
-		}
-	};
-
-	struct __impl : __sexpr_defaults
-	{
-		static constexpr struct
-		{
-			template<typename _Sender, typename... Env>
-			auto operator()(_Sender&&, Env&&...) const noexcept
-			{
-				return completion_signatures<set_value_t()>{};
-			};
-		} get_completion_signatures;
-
-
-		static constexpr struct
-		{
-			template<class _State, class _Receiver>
-			void operator()(_State& __state, _Receiver& __rcvr) const noexcept
-			{
-				__state.apply([&__rcvr](auto&... ts)
-					{
-						ustdex::set_value(__rcvr, std::move(ts)...);
-					}, __state);
-			};
-		} start;
-	};
-}
-
-template <>
-struct __sexpr_impl<__test_sender::test_sender_t> : __test_sender::__impl {};
-
-template<typename T>
-auto test_aa(T t)
-{
-	return t;
-}
-
-template <class _Tag>
-using AA_get_attrs_fn = decltype(test_aa(_Tag {}));
-
 int main()
 {
-	AA_get_attrs_fn<int> vv;
+#if 0
+	std::cout << "main: " << std::this_thread::get_id() << std::endl;
 
-	__test_sender::test_sender_t test_sender;
 
-	//auto ts11 = test_sender(1, 2, 3);
-
-	//ts11.get_completion_signatures<int>();
-
-	//using T1 = ustdex::completion_signatures_of_t<decltype(ts11)>;
-
-	//_whatis<T1>();
-
-	auto v1 = test_sender(1, 2, 3);
-
-	/*using T_v1 = tag_of_t<decltype(v1)>;
-
-	_whatis<T_v1>();*/
+	ustdex::static_thread_pool thread_pool_b{};
+	auto v1 = test_sender(thread_pool_b.get_scheduler(), 2, 3, 4);
 
 	auto op = ustdex::connect(v1, sink{});
 
 	ustdex::start(op);
 
+	while (true);
 
+#endif
 	/*auto pp1 = ustdex::_make_sexpr<int>(3, 4, 5);
 	_whatis<decltype(pp1)::__captures_t>();*/
 
 	int a = 0;
 
-#if 0
-	asio::static_thread_pool thread_pool_a{};
+#if 1
+	//asio::static_thread_pool thread_pool_a{};
 	ustdex::static_thread_pool thread_pool_b{};
-	std::vector<int> values(100'000'000);
+	std::vector<int> values(100'000'000);//
 	std::random_device random_device;
 	std::mt19937 rng(random_device());
 	std::uniform_int_distribution<int> dist(1, 1'000'000);
@@ -160,11 +97,18 @@ int main()
 
 	auto begin = std::chrono::high_resolution_clock::now();
 	//thread_pool_b.get_scheduler()
-	auto ps = parallel_sort(atp::asio_scheduler{thread_pool_a.get_executor()}, values.begin(), values.end(), [](const int& a, const int& b)
+	/*auto ps = parallel_sort(atp::asio_scheduler{thread_pool_a.get_executor()}, values.begin(), values.end(), [](const int& a, const int& b)
+		{
+			return a < b;
+		});*/
+
+	auto ps = parallel_sort(thread_pool_b.get_scheduler(), values.begin(), values.end(), [](const int& a, const int& b)
 		{
 			return a < b;
 		});
+	auto op = ustdex::connect(ps, sink{});
 	ustdex::sync_wait(std::move(ps));
+
 
 	auto end = std::chrono::high_resolution_clock::now();
 
