@@ -68,20 +68,6 @@ struct _m_size
   using call USTDEX_ATTR_NODEBUG_ALIAS = _m_size_t<sizeof...(Ts)>;
 };
 
-template <template <class...> class Fn>
-struct _m_quote
-{
-  template <class... Ts>
-  using call USTDEX_ATTR_NODEBUG_ALIAS = Fn<Ts...>;
-};
-
-template <template <class> class Fn>
-struct _m_quote1
-{
-  template <class Ty>
-  using call USTDEX_ATTR_NODEBUG_ALIAS = Fn<Ty>;
-};
-
 template <class Fn, class... Ts>
 using _m_call USTDEX_ATTR_NODEBUG_ALIAS = typename Fn::template call<Ts...>;
 
@@ -142,6 +128,20 @@ struct _m_indirect_q
   template <class... _Ts>
   using call USTDEX_ATTR_NODEBUG_ALIAS =
     typename detail::_m_call_indirect_fn<sizeof(_m_list<_Ts...>*)>::template call<_Fn, _Ts...>;
+};
+
+template <template <class...> class Fn>
+struct _m_quote
+{
+    template <class... Ts>
+    using call USTDEX_ATTR_NODEBUG_ALIAS = _m_call<_m_indirect_q<Fn>, Ts...>;
+};
+
+template <template <class> class Fn>
+struct _m_quote1
+{
+    template <class Ty>
+    using call USTDEX_ATTR_NODEBUG_ALIAS = Fn<Ty>;
 };
 
 template <bool>

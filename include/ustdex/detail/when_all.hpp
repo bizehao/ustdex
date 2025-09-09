@@ -400,7 +400,7 @@ USTDEX_API constexpr auto when_all_t::_merge_completions(Completions... _cs)
     }
     else
     {
-      using _m_list_size_fn                                    = _m_bind_front<_m_indirect_q<_m_apply>, _m_size>;
+      using _m_list_size_fn                                    = _m_bind_front<_m_quote<_m_apply>, _m_size>;
       std::array<std::size_t, sizeof...(Completions)> _offsets = {
         _value_types<Completions, _m_list, _m_list_size_fn::call>::value...};
       (void) ustdex::exclusive_scan(_offsets.begin(), _offsets.end(), _offsets.begin(), 0ul);

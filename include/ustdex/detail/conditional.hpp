@@ -211,6 +211,8 @@ struct _cond_t
 template <class Sndr, class Pred, class Then, class Else>
 struct USTDEX_TYPE_VISIBILITY_DEFAULT _cond_t::_sndr_t
 {
+  using sender_concept = sender_t;
+
   using _data_t = _cond_t::_data<Pred, Then, Else>;
   _cond_t _tag_;
   _data_t _data_;

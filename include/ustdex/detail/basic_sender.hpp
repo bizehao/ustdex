@@ -449,7 +449,7 @@ namespace ustdex
 
 			using __desc_t = decltype(std::declval<_DescriptorFn>()());
 			using __tag_t = typename __desc_t::__tag;
-			using __captures_t = _m_call<__desc_t, _m_indirect_q<detail::__captures_t>>;
+			using __captures_t = _m_call<__desc_t, _m_quote<detail::__captures_t>>;
 
 			mutable __captures_t __impl_;
 
