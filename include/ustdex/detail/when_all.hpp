@@ -384,7 +384,12 @@ template <class... Completions>
 USTDEX_API constexpr auto when_all_t::_merge_completions(Completions... _cs)
 {
   // Use USTDEX_LET_COMPLETIONS to ensure all completions are valid:
-  USTDEX_LET_COMPLETIONS(auto(_tmp) = (completion_signatures{}, ..., _cs)) // NB: uses overloaded comma operator
+  if constexpr (auto _tmp = (completion_signatures{}, ..., _cs);
+                !::ustdex::_valid_completion_signatures<decltype(_tmp)>)
+  {
+    return _pair{_tmp, _nil{}};
+  }
+  else                                                                     // NB: uses overloaded comma operator
   {
     std::ignore                 = _tmp;                                    // silence unused variable warning
     auto _non_value_completions = concat_completion_signatures(

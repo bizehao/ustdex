@@ -27,8 +27,6 @@
  //#include "asio_thread_pool.hpp"
 #include "ustdex/detail/basic_sender.hpp"
 
-template<typename... Args>
-void _whatis();
 
 struct sink
 {
@@ -63,8 +61,23 @@ template <class>
 [[deprecated]] void print()
 {}
 
+using namespace ustdex;
+
 int main()
 {
+  ustdex::thread_context tp;
+  using MT = decltype(tp.get_scheduler());
+  auto task = schedule(tp.get_scheduler()) | let_value([] {
+      /*return read_env(get_scheduler) | then([](auto&& sched) {
+                         static_assert(std::is_same_v < std::decay_t<decltype(sched)>, std::decay_t<MT>>);
+             });*/
+
+	  auto sched_sender = read_env(get_scheduler);
+      auto value_sender = just(42);
+      return when_all(std::move(sched_sender), std::move(value_sender)) // <-- use a when_all here
+          | then([](auto&& sched, int value) { /*io_uring_socket.async_send(value, on=sched)...*/ });
+    });
+
 #if 0
 	std::cout << "main: " << std::this_thread::get_id() << std::endl;
 
@@ -84,7 +97,7 @@ int main()
 
 	int a = 0;
 
-#if 1
+#if 0
 	//asio::static_thread_pool thread_pool_a{};
 	ustdex::static_thread_pool thread_pool_b{};
 	std::vector<int> values(100'000'000);//
