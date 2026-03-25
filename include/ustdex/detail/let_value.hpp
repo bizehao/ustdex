@@ -230,19 +230,21 @@ private:
     template <class Self, class... Env>
     USTDEX_API static constexpr auto get_completion_signatures()
     {
+      using SndrEnv = env_of_t<Sndr>;
+      using Env_t = env<SndrEnv, Env...>;
       USTDEX_LET_COMPLETIONS(auto(_child_completions) = get_child_completion_signatures<Self, Sndr, Env...>())
       {
         if constexpr (Disposition == _disposition_t::_value)
         {
-          return transform_completion_signatures(_child_completions, _transform_args_fn<Fn>{});
+          return transform_completion_signatures(_child_completions, _transform_args_fn<Fn, Env_t>{});
         }
         else if constexpr (Disposition == _disposition_t::_error)
         {
-          return transform_completion_signatures(_child_completions, {}, _transform_args_fn<Fn>{});
+          return transform_completion_signatures(_child_completions, {}, _transform_args_fn<Fn, Env_t>{});
         }
         else
         {
-          return transform_completion_signatures(_child_completions, {}, {}, _transform_args_fn<Fn>{});
+          return transform_completion_signatures(_child_completions, {}, {}, _transform_args_fn<Fn, Env_t>{});
         }
       }
     }
